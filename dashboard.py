@@ -49,8 +49,21 @@ start_date, end_date = st.sidebar.date_input(
     max_value=max_date,
 )
 
+status_labels = {"F": "F — Fulfilled", "O": "O — Open", "P": "P — Pending"}
+selected_statuses = st.sidebar.multiselect(
+    "Order status",
+    options=list(status_labels.keys()),
+    default=list(status_labels.keys()),
+    format_func=lambda x: status_labels[x],
+)
+
+if not selected_statuses:
+    st.sidebar.error("Select at least one order status.")
+    st.stop()
+
 if isinstance(start_date, date) and isinstance(end_date, date) and start_date <= end_date:
-    date_filter = f"O_ORDERDATE BETWEEN '{start_date}' AND '{end_date}'"
+    status_list = ", ".join(f"'{s}'" for s in selected_statuses)
+    date_filter = f"O_ORDERDATE BETWEEN '{start_date}' AND '{end_date}' AND O_ORDERSTATUS IN ({status_list})"
 else:
     st.sidebar.error("Select a valid date range.")
     st.stop()
@@ -80,7 +93,36 @@ def load_revenue_by_month(date_filter: str) -> pd.DataFrame:
         ORDER BY 1
     """)
 
-# ── Query 3: Top 10 customers ─────────────────────────────────────────────────
+# ── Query 3: Orders by market segment ────────────────────────────────────────
+@st.cache_data(ttl=600)
+def load_market_segments(date_filter: str) -> pd.DataFrame:
+    return query(f"""
+        SELECT
+            C.C_MKTSEGMENT      AS market_segment,
+            COUNT(*)            AS order_count
+        FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS  O
+        JOIN SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER C
+          ON O.O_CUSTKEY = C.C_CUSTKEY
+        WHERE {date_filter}
+        GROUP BY 1
+        ORDER BY 2 DESC
+    """)
+
+# ── Query 4: Order volume by day of week and month ───────────────────────────
+@st.cache_data(ttl=600)
+def load_heatmap(date_filter: str) -> pd.DataFrame:
+    return query(f"""
+        SELECT
+            DAYOFWEEK(O_ORDERDATE)  AS day_of_week,
+            MONTH(O_ORDERDATE)      AS month,
+            COUNT(*)                AS order_count
+        FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS
+        WHERE {date_filter}
+        GROUP BY 1, 2
+        ORDER BY 1, 2
+    """)
+
+# ── Query 5: Top 10 customers ─────────────────────────────────────────────────
 @st.cache_data(ttl=600)
 def load_top_customers(date_filter: str) -> pd.DataFrame:
     return query(f"""
@@ -100,6 +142,8 @@ def load_top_customers(date_filter: str) -> pd.DataFrame:
 with st.spinner("Loading data from Snowflake…"):
     summary_df    = load_summary(date_filter)
     monthly_df    = load_revenue_by_month(date_filter)
+    segments_df   = load_market_segments(date_filter)
+    heatmap_df    = load_heatmap(date_filter)
     customers_df  = load_top_customers(date_filter)
 
 # ── Metric row ────────────────────────────────────────────────────────────────
@@ -155,3 +199,52 @@ with right:
         margin=dict(t=20, b=20),
     )
     st.plotly_chart(fig_bar, use_container_width=True)
+
+st.divider()
+
+# Heatmap — order volume by day of week × month
+st.subheader("Order Volume by Day of Week × Month")
+
+DAY_NAMES   = {1: "Sun", 2: "Mon", 3: "Tue", 4: "Wed", 5: "Thu", 6: "Fri", 7: "Sat"}
+MONTH_NAMES = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
+               7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
+
+heatmap_df["DAY_LABEL"]   = heatmap_df["DAY_OF_WEEK"].map(DAY_NAMES)
+heatmap_df["MONTH_LABEL"] = heatmap_df["MONTH"].map(MONTH_NAMES)
+
+pivot = (
+    heatmap_df
+    .pivot(index="DAY_LABEL", columns="MONTH_LABEL", values="ORDER_COUNT")
+    .reindex(index=list(DAY_NAMES.values()),
+             columns=list(MONTH_NAMES.values()))
+)
+
+fig_heat = go.Figure(go.Heatmap(
+    z=pivot.values,
+    x=pivot.columns.tolist(),
+    y=pivot.index.tolist(),
+    colorscale="Blues",
+    hovertemplate="<b>%{y}, %{x}</b><br>Orders: %{z:,}<extra></extra>",
+))
+fig_heat.update_layout(
+    template="plotly_white",
+    xaxis_title="Month",
+    yaxis_title="Day of Week",
+    margin=dict(t=20, b=20),
+)
+st.plotly_chart(fig_heat, use_container_width=True)
+
+st.divider()
+
+# Pie chart — orders by market segment
+st.subheader("Orders by Market Segment")
+fig_pie = px.pie(
+    segments_df,
+    names="MARKET_SEGMENT",
+    values="ORDER_COUNT",
+    template="plotly_white",
+    color_discrete_sequence=px.colors.qualitative.Pastel,
+)
+fig_pie.update_traces(textposition="inside", textinfo="percent+label")
+fig_pie.update_layout(margin=dict(t=20, b=20), showlegend=True)
+st.plotly_chart(fig_pie, use_container_width=True)
