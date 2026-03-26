@@ -54,3 +54,4 @@ Thumbs.db
 
 # Project-specific
 tools_config.yaml
+.streamlit/secrets.toml

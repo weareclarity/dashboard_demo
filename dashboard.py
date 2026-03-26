@@ -21,14 +21,15 @@ st.caption("Source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1")
 # ── Snowflake connection ──────────────────────────────────────────────────────
 @st.cache_resource
 def get_connection():
+    s = st.secrets["snowflake"]
     return snowflake.connector.connect(
-        account="VKDFKAW-IS83300",
-        user="CLAUDE_USER",
-        password="YourStrongPassword123!",
-        warehouse="COMPUTE_WH",
-        role="CLAUDE_ROLE",
-        database="SNOWFLAKE_SAMPLE_DATA",
-        schema="TPCH_SF1",
+        account=s["account"],
+        user=s["user"],
+        password=s["password"],
+        warehouse=s["warehouse"],
+        role=s["role"],
+        database=s["database"],
+        schema=s["schema"],
     )
 
 @st.cache_data(ttl=600)
