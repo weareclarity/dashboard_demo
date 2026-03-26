@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "snowflake": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "snowflake-labs-mcp",
+        "--service-config-file",
+        "./tools_config.yaml",
+        "--connection-name",
+        "default"
+      ],
+      "env": {}
+    }
+  }
+}
