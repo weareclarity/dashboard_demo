@@ -14,5 +14,8 @@
       "Bash(.venv/bin/streamlit run:*)",
       "Bash(git pull:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "snowflake"
+  ]
 }
