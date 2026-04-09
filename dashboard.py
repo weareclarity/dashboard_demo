@@ -2,7 +2,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import streamlit as st
-import snowflake.connector
+from snowflake.snowpark.context import get_active_session
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -21,21 +21,12 @@ st.caption("Source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1")
 # ── Snowflake connection ──────────────────────────────────────────────────────
 @st.cache_resource
 def get_connection():
-    s = st.secrets["snowflake"]
-    return snowflake.connector.connect(
-        account=s["account"],
-        user=s["user"],
-        password=s["password"],
-        warehouse=s["warehouse"],
-        role=s["role"],
-        database=s["database"],
-        schema=s["schema"],
-    )
+    return get_active_session()
 
 @st.cache_data(ttl=600)
 def query(sql: str) -> pd.DataFrame:
-    conn = get_connection()
-    return pd.read_sql(sql, conn)
+    session = get_connection()
+    return session.sql(sql).to_pandas()
 
 # ── Sidebar: date range filter ────────────────────────────────────────────────
 st.sidebar.header("Filters")
