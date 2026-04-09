@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Bash(uvx --version)",
+      "Read(//Users/sergeleblanc/**)",
+      "Read(//Users/sergeleblanc/.snowflake/**)",
+      "Bash(chmod 600 ~/.snowflake/connections.toml)",
+      "Bash(timeout 15 uvx snowflake-labs-mcp --service-config-file ./tools_config.yaml --connection-name default)",
+      "Bash(python -m venv .venv)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/python3 -c \":*)",
+      "Bash(.venv/bin/streamlit run:*)",
+      "Bash(git pull:*)"
+    ]
+  }
+}
