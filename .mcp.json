@@ -4,9 +4,11 @@
       "type": "stdio",
       "command": "uvx",
       "args": [
+        "--with",
+        "fakeredis<2.20",
         "snowflake-labs-mcp",
         "--service-config-file",
-        "./tools_config.yaml",
+        "/Users/sergeleblanc/Library/CloudStorage/Dropbox/Business/Clarity/Repos/dashboard_demo/tools_config.yaml",
         "--connection-name",
         "default"
       ],
